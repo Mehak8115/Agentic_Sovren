@@ -1,0 +1,29 @@
+# Web Framework 
+fastapi==0.136.3
+uvicorn==0.48.0
+python-multipart==0.0.30      # required for file uploads (UploadFile)
+starlette==1.2.1
+
+# LLM
+groq==1.4.0
+
+# Database
+pymongo==4.17.0
+dnspython==2.8.0              # required by pymongo for DNS SRV connections
+
+# Resume Parsing 
+pdfplumber==0.11.9            # PDF text extraction
+python-docx==1.2.0            # DOCX text extraction
+
+# Skill Matching
+rapidfuzz==3.14.5             # fuzzy string matching for skill comparison
+
+# Data / ML (optional — only if semantic matching is used) ──
+scikit-learn==1.8.0
+numpy==2.4.6
+sentence-transformers==5.5.1  # semantic skill similarity (if enabled)
+
+# Utilities
+python-dotenv==1.2.2          # .env file loading
+pydantic==2.13.4              # request/response models
+httpx==0.28.1                 # HTTP client (used by groq internally)
