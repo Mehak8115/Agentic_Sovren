@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sovren Maritime AI</title>
+  <link rel="stylesheet" href="/static/style.css?v=3" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">⚓ <span>Sovren</span></div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" data-tab="booking">🚢 Boat Booking</button>
+      <button class="tab-btn" data-tab="crew">👷 Crew Agent</button>
+      <button class="tab-btn" data-tab="hr">🧑‍💼 HR Agent</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-text">
+      <h1>⚓ <span>Sovren</span> Maritime AI</h1>
+      <p>One Platform. Every Voyage. </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- BOOKING TAB                                    -->
+  <!-- ══════════════════════════════════════════════ -->
+  <main id="tab-booking" class="tab-content active">
+    <div class="container">
+      <h2 class="section-title">🚢 Boat Booking Agent</h2>
+
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Your Query</label>
+            <textarea id="b-query" rows="2"
+              placeholder="e.g. Suggest luxury boats in Goa for 20 people under 50k in July"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Your Name</label>
+            <input id="b-name" type="text" placeholder="Rahul" />
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <select id="b-payment">
+              <option value="online">Online</option>
+              <option value="upi">UPI</option>
+              <option value="card">Card</option>
+              <option value="cash">Cash</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Confirm Booking?</label>
+            <select id="b-confirm">
+              <option value="false">No — just show options</option>
+              <option value="true">Yes — book &amp; pay</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Show Agent Reasoning?</label>
+            <select id="b-thought">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="runBooking()">Search Boats 🔍</button>
+      </div>
+
+      <div id="b-loading" class="loading hidden">🤖 Agent is thinking...</div>
+      <div id="b-error"   class="error-box hidden"></div>
+      <div id="b-result"  class="result-area hidden"></div>
+    </div>
+  </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- CREW TAB                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <main id="tab-crew" class="tab-content hidden">
+    <div class="container">
+      <h2 class="section-title">👷 Crew Career Agent</h2>
+
+      <!-- Sub-tabs -->
+      <div class="sub-tabs">
+        <button class="sub-btn active" data-sub="upload">Upload Resume</button>
+        <!-- <button class="sub-btn" data-sub="id">Use Candidate ID</button> -->
+      </div>
+
+      <!-- Upload sub-tab -->
+      <div id="sub-upload" class="sub-content active card">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Your Query</label>
+            <textarea id="c-query-upload" rows="2"
+              placeholder="e.g. Which jobs am I eligible for? / Analyze my resume and find skill gaps"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Resume File (PDF / DOCX)</label>
+            <input id="c-file" type="file" accept=".pdf,.docx" />
+          </div>
+          <div class="form-group">
+            <label>Show Agent Reasoning?</label>
+            <select id="c-thought-upload">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="runCrewUpload()">Analyze Resume 🚀</button>
+      </div>
+
+      <!-- ID sub-tab -->
+      <div id="sub-id" class="sub-content hidden card">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Your Query</label>
+            <textarea id="c-query-id" rows="2"
+              placeholder="e.g. Suggest jobs / Find skill gaps / Career plan"></textarea>
+          </div>
+          <div class="form-group full">
+            <label>Candidate ID</label>
+            <input id="c-id" type="text" placeholder="MongoDB ObjectId from /upload-resume" />
+          </div>
+          <div class="form-group">
+            <label>Show Agent Reasoning?</label>
+            <select id="c-thought-id">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="runCrewId()">Run Agent 🚀</button>
+      </div>
+
+      <div id="c-loading" class="loading hidden">🤖 Agent is thinking...</div>
+      <div id="c-error"   class="error-box hidden"></div>
+      <div id="c-result"  class="result-area hidden"></div>
+    </div>
+  </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- HR AGENT TAB                                   -->
+  <!-- ══════════════════════════════════════════════ -->
+  <main id="tab-hr" class="tab-content hidden">
+    <div class="container">
+      <h2 class="section-title">🧑‍💼 HR Agent</h2>
+
+      <div class="sub-tabs">
+        <button class="sub-btn active"  data-sub="hr-jd">Generate JD</button>
+        <button class="sub-btn" data-sub="hr-rank">Rank Candidates</button>
+        <!-- <button class="sub-btn" data-sub="hr-gap">Skill Gap</button> -->
+        <button class="sub-btn" data-sub="hr-report">Report</button>
+        <!-- <button class="sub-btn" data-sub="hr-interview">Interview</button> -->
+        <button class="sub-btn" data-sub="hr-jobs">All Jobs</button>
+      </div>
+
+      <!-- Generate JD -->
+      <div id="sub-hr-jd" class="sub-content active card">
+        <div class="form-grid">
+          <div class="form-group"><label>Role</label>
+            <input id="hr-role" placeholder="e.g. Chief Officer" /></div>
+          <div class="form-group"><label>Location</label>
+            <input id="hr-location" placeholder="e.g. Mumbai" /></div>
+          <div class="form-group"><label>Min Experience (years)</label>
+            <input id="hr-exp" type="number" value="3" min="0" /></div>
+          <div class="form-group full"><label>Extra Context (optional)</label>
+            <input id="hr-context" placeholder="e.g. Bulk carrier, VLCC operations" /></div>
+        </div>
+        <button class="btn-primary" onclick="hrGenerateJD()">Generate JD ✨</button>
+      </div>
+
+      <!-- Rank Candidates -->
+      <div id="sub-hr-rank" class="sub-content hidden card">
+        <div class="form-grid">
+          <div class="form-group full"><label>HR Job ID</label>
+            <input id="hr-rank-jobid" placeholder="Job ID from generated JD" /></div>
+        </div>
+        <button class="btn-primary" onclick="hrRankCandidates()">Rank Candidates 🏆</button>
+      </div>
+
+      <!-- Skill Gap -->
+      <div id="sub-hr-gap" class="sub-content hidden card">
+        <div class="form-grid">
+          <div class="form-group"><label>Candidate ID</label>
+            <input id="hr-gap-cid" placeholder="MongoDB candidate ID" /></div>
+          <div class="form-group"><label>HR Job ID</label>
+            <input id="hr-gap-jid" placeholder="HR Job ID" /></div>
+        </div>
+        <button class="btn-primary" onclick="hrSkillGap()">Analyze Skill Gap 🔍</button>
+      </div>
+
+      <!-- Recruitment Report -->
+      <div id="sub-hr-report" class="sub-content hidden card">
+        <div class="form-grid">
+          <div class="form-group full"><label>HR Job ID</label>
+            <input id="hr-report-jid" placeholder="HR Job ID" /></div>
+        </div>
+        <button class="btn-primary" onclick="hrReport()">Generate Report 📊</button>
+      </div>
+
+      <!-- Interview Summary -->
+      <div id="sub-hr-interview" class="sub-content hidden card">
+        <div class="form-grid">
+          <div class="form-group"><label>Candidate Name</label>
+            <input id="hr-int-name" placeholder="e.g. Rahul Sharma" /></div>
+          <div class="form-group"><label>Job Title</label>
+            <input id="hr-int-title" placeholder="e.g. Chief Officer" /></div>
+          <div class="form-group"><label>Rating (1-5)</label>
+            <select id="hr-int-rating">
+              <option value="1">1 — Poor</option>
+              <option value="2">2 — Below Average</option>
+              <option value="3" selected>3 — Average</option>
+              <option value="4">4 — Good</option>
+              <option value="5">5 — Excellent</option>
+            </select></div>
+          <div class="form-group"><label>HR Job ID (optional)</label>
+            <input id="hr-int-jid" placeholder="For logging" /></div>
+          <div class="form-group full"><label>Interview Notes</label>
+            <textarea id="hr-int-notes" rows="4"
+              placeholder="e.g. Candidate demonstrated strong navigation skills, familiar with STCW..."></textarea></div>
+        </div>
+        <button class="btn-primary" onclick="hrInterview()">Generate Summary 📝</button>
+      </div>
+
+      <!-- All Jobs + Publish/Close -->
+      <div id="sub-hr-jobs" class="sub-content hidden card">
+        <div style="display:flex;gap:.8rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+          <select id="hr-jobs-filter" style="padding:.45rem .8rem;border-radius:8px;border:1.5px solid #dce5f0">
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button class="btn-primary" onclick="hrListJobs()">Load Jobs 🔄</button>
+        </div>
+        <div id="hr-jobs-list"></div>
+      </div>
+
+      <div id="hr-loading" class="loading hidden">🤖 HR Agent thinking...</div>
+      <div id="hr-error"   class="error-box hidden"></div>
+      <div id="hr-result"  class="result-area hidden"></div>
+    </div>
+  </main>
+
+  <script src="/static/app.js?v=3"></script>
+</body>
+</html>
