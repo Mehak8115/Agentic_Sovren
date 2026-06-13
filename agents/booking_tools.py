@@ -141,13 +141,16 @@ def tool_location_route_matching(
     for boat in boats:
         boat_location = boat.get("location", "").lower()
         route         = [r.lower() for r in boat.get("route", [])]
-        route_str     = " ".join(route)
 
-        # Location match: boat location OR any route stop matches
+        # Location match: ONLY against boat's home port (not route stops)
+        # This prevents "Goa Cargo King" showing in Mumbai search just because
+        # Mumbai appears in its route
         loc_match = not location or any(
-            term in boat_location or term in route_str
+            term == boat_location or term in boat_location
             for term in location_terms
         )
+
+        # Route matching only when user explicitly specifies departure/destination
         from_ok = not route_from or any(route_from.lower() in r for r in route)
         to_ok   = not route_to   or any(route_to.lower()   in r for r in route)
 

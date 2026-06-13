@@ -124,3 +124,18 @@ def get_job(job_id: str):
     if not job:
         return {"error": "Job not found"}
     return job
+
+
+@router.patch("/hr/jobs/{job_id}", tags=["HR Agent"])
+def update_job(job_id: str, updates: dict):
+    """Update specific fields of an HR job (e.g. vacancies, salary, summary)."""
+    from database.mongodb import db
+    from bson import ObjectId
+    try:
+        db.hr_jobs.update_one({"_id": ObjectId(job_id)}, {"$set": updates})
+        # Also sync to available_jobs if published
+        db.available_jobs.update_one({"hr_job_id": job_id}, {"$set": updates})
+        updated = get_hr_job(job_id)
+        return {"status": "updated", "job": updated}
+    except Exception as e:
+        return {"error": str(e)}

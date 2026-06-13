@@ -29,7 +29,7 @@ jobs = [
 "role":"Captain",
 "location":"Chennai",
 "salary":"₹110k-₹160k",
-"vacancies":1,
+"vacancies":2,
 "minimum_experience":6,
 "mandatory_skills":[
 "navigation",

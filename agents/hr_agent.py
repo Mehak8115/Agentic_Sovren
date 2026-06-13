@@ -82,12 +82,42 @@ class HRAgent:
         job_id = kw.get("job_id")
         if not job_id:
             return {"error": "job_id required"}
-        job = get_hr_job(job_id)
-        if not job:
-            return {"error": f"Job not found: {job_id}"}
-        self._log(f"[TOOL] rank_candidates(job={job.get('title')})")
+
+        # job_id from dropdown is available_jobs._id (since notifications store it that way)
+        from database.mongodb import available_jobs_collection
+        from bson import ObjectId
+
+        # Try available_jobs first (applications link to this)
+        avail_job = None
+        try:
+            avail_job = available_jobs_collection.find_one({"_id": ObjectId(job_id)})
+        except Exception:
+            pass
+
+        if avail_job:
+            job = dict(avail_job)
+            job["_id"] = str(avail_job["_id"])
+        else:
+            # Fallback: try hr_jobs
+            job = get_hr_job(job_id)
+            if not job:
+                return {"error": f"Job not found: {job_id}"}
+            # Find available_jobs record for this hr_job
+            avail = available_jobs_collection.find_one({"hr_job_id": job_id})
+            if avail:
+                job["_id"] = str(avail["_id"])
+            else:
+                job["_id"] = job_id
+
+        self._log(f"[TOOL] rank_candidates(job={job.get('title')}) using _id={job['_id']}")
         ranked = tool_rank_candidates(job)
-        self._log(f"[OBS]  {len(ranked)} candidates ranked")
+        if not ranked:
+            return {
+                "agent": "Maritime HR Agent",
+                "intent": "rank_candidates",
+                "response": f"No applications received yet for **{job.get('title')}**. Share the job posting with candidates first.",
+                "data": {"job_title": job.get("title"), "total_ranked": 0, "eligible": 0, "shortlist": [], "all_ranked": []}
+            }
         shortlist = tool_shortlist_candidates(ranked, top_n=5)
         nl = self._nl("rank_candidates", {"job": job, "shortlist": shortlist, "total": len(ranked),
                                            "eligible": sum(1 for c in ranked if c.get("is_eligible"))})
@@ -189,18 +219,18 @@ class HRAgent:
         context = json.dumps(data, default=str, indent=2)[:2000]
         return groq_chat(
             messages=[{"role": "user", "content":
-                f"""Maritime HR assistant. Intent: {intent}.
+                f"""You are a helpful maritime HR assistant. Intent: {intent}.
 Data: {context}
 
-FORMATTING RULES:
-- Use **bold** for names, job titles, skills, certifications, numbers
-- Use *italic* for labels, status, scores
-- Use ## for section headers (e.g. ## Candidate Summary, ## Skill Gaps, ## Recommendation)
-- Use - bullet points for lists
-- Use ₹ for all salary values, never $
-- Be specific, professional, and actionable
-
-Write a well-structured response for the HR manager."""}],
+Write a clear, plain-English response for the HR manager. Rules:
+- Talk naturally, like a knowledgeable colleague
+- No technical jargon, no raw values like "gap_score=80" or "is_eligible=True"
+- Say "strong candidate" not "gap_score=80"
+- Say "qualifies for the role" not "is_eligible=True"
+- **Bold** names, job titles, key numbers
+- Use ## headers and bullet points for structure
+- Use ₹ for all salaries
+- Be specific and actionable"""}],
             temperature=0.3,
         )
 

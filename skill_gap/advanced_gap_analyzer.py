@@ -78,26 +78,18 @@ def analyze_gap(
                 skill
             )
 
-    total_required = (
-        len(mandatory)
-        +
-        len(optional)
+    # Skill match: based on MANDATORY skills only
+    # Optional skills give a small bonus but don't inflate the base score
+    mandatory_match_pct = round(
+        (len(matched_mandatory) / max(len(mandatory), 1)) * 100, 1
     )
 
-    matched_total = (
-        len(matched_mandatory)
-        +
-        len(matched_optional)
-    )
+    optional_bonus = round(
+        (len(matched_optional) / max(len(optional), 1)) * 10, 1
+    ) if optional else 0
 
-    skill_match_pct = round(
-        (
-            matched_total
-            /
-            total_required
-        ) * 100,
-        1
-    )
+    skill_match_pct = min(mandatory_match_pct + optional_bonus, 100.0)
+    skill_match_pct = round(skill_match_pct, 1)
 
     candidate_certs = {
         str(c).lower()
@@ -149,23 +141,22 @@ def analyze_gap(
     cert_score = 100
 
     if len(required_certs) > 0:
+        cert_score = round(
+            (len(present_certs) / len(required_certs)) * 100, 1
+        )
 
-        cert_score = (
-            len(present_certs)
-            /
-            len(required_certs)
-        ) * 100
-
-    gap_score = round(
-        (
-            skill_match_pct * 0.4
-            +
-            cert_score * 0.2
-            +
-            exp_score * 0.4
-        ),
-        1
+    # Gap score formula:
+    # 40% skills (mandatory-based), 30% experience, 30% certifications
+    # Missing certs apply a hard penalty on top
+    raw_score = (
+        skill_match_pct * 0.40
+        + exp_score      * 0.30
+        + cert_score     * 0.30
     )
+
+    # Additional penalty: each missing mandatory cert deducts 5 points
+    cert_penalty = len(missing_certs) * 5
+    gap_score = round(max(raw_score - cert_penalty, 0), 1)
 
     eligible = (
         len(missing_mandatory) <= 4
@@ -225,5 +216,6 @@ def analyze_gap(
         f"{skill_match_pct}% skill match | "
         f"gap score {gap_score}/100 | "
         f"missing {len(missing_mandatory)} mandatory skill(s) | "
-        f"missing {len(missing_certs)} certification(s)"
+        f"missing {len(missing_certs)} certification(s) | "
+        f"exp {exp_years}/{min_exp} yrs"
     }

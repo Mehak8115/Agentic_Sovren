@@ -20,9 +20,17 @@ def _full_year() -> list[str]:
         all_dates += [(start + timedelta(days=i * 5)).isoformat() for i in range(per_month)]
     return all_dates
 
-# Covers Jul → Dec 2026 for every boat
+# Covers current month + 6 months forward for every boat
 def _full_year(day: int = 1) -> list[str]:
-    months = ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12"]
+    from datetime import date, timedelta
+    today = date.today()
+    # Start from next month to only show future dates
+    months = []
+    for i in range(1, 7):  # next 6 months
+        m = today.month + i
+        y = today.year + (m - 1) // 12
+        m = ((m - 1) % 12) + 1
+        months.append(f"{y}-{m:02d}")
     all_dates = []
     for m in months:
         start = date.fromisoformat(f"{m}-{day:02d}")

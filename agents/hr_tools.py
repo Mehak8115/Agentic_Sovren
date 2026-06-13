@@ -64,18 +64,27 @@ Return ONLY the JSON object."""
 
 def tool_rank_candidates(job: dict) -> list[dict]:
     """
-    Fetch all candidates, run gap analysis against the job,
+    Fetch only candidates who applied for this job, run gap analysis,
     rank by gap_score descending.
     """
-    candidates = get_candidates_for_ranking()
-    if not candidates:
+    from database.mongodb import applications_collection
+    from database.candidate_repository import get_candidate
+
+    job_id = str(job.get("_id", ""))
+
+    # Get all applications for this job
+    applications = list(applications_collection.find({"job_id": job_id}))
+    if not applications:
         return []
 
     ranked = []
-    for c in candidates:
+    for app in applications:
         try:
+            c = get_candidate(app["candidate_id"])
+            if not c:
+                continue
+
             gap = analyze_gap(c, job)
-            # Extract candidate's current role from experience
             experience = c.get("experience", [])
             current_role = ""
             if experience:
@@ -90,6 +99,7 @@ def tool_rank_candidates(job: dict) -> list[dict]:
                 "name":              c.get("personal_info", {}).get("name", "Unknown")
                                      if isinstance(c.get("personal_info"), dict) else "Unknown",
                 "current_role":      current_role,
+                "applied_at":        app.get("applied_at", ""),
                 "gap_score":         gap["gap_score"],
                 "skill_match_pct":   gap["skill_match_pct"],
                 "is_eligible":       gap["is_eligible"],
@@ -102,14 +112,14 @@ def tool_rank_candidates(job: dict) -> list[dict]:
             })
         except Exception as e:
             ranked.append({
-                "candidate_id": str(c.get("_id", "")),
-                "name": c.get("personal_info", {}).get("name", "?") if isinstance(c.get("personal_info"), dict) else "?",
+                "candidate_id": app.get("candidate_id", ""),
+                "name": app.get("candidate_name", "?"),
                 "current_role": "",
                 "error": str(e),
                 "gap_score": 0, "is_eligible": False,
             })
 
-    return sorted(ranked, key=lambda x: (x.get("is_eligible", False), x.get("gap_score", 0)), reverse=True)
+    return sorted(ranked, key=lambda x: x.get("gap_score", 0), reverse=True)
 
 
 # ── Tool 3: Shortlist top N candidates ────────────────────────────────────────

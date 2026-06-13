@@ -49,10 +49,15 @@ def publish_hr_job(job_id: str) -> bool:
         {"$set": {"status": "published", "published_at": datetime.utcnow().isoformat()}}
     )
 
-    # Sync to available_jobs (upsert by hr_job_id)
+    # Build clean job data without the _id field (let MongoDB assign its own)
+    job_data = {k: v for k, v in job.items() if k != "_id"}
+    job_data["hr_job_id"] = job_id
+    job_data["status"]    = "published"
+
+    # Upsert by hr_job_id — if already exists update it, else insert
     available_jobs_collection.update_one(
         {"hr_job_id": job_id},
-        {"$set": {**job, "hr_job_id": job_id, "status": "published"}},
+        {"$set": job_data},
         upsert=True,
     )
     return True

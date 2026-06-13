@@ -65,10 +65,10 @@ def tool_crew_gap_analysis(candidate: dict, job: dict) -> dict:
 
 
 def tool_rank_jobs(gap_results: list[dict]) -> list[dict]:
-    """Rank: eligible jobs first, then by gap_score descending."""
+    """Rank by gap_score descending — best match first regardless of eligibility."""
     return sorted(
         gap_results,
-        key=lambda x: (x.get("is_eligible", False), x.get("gap_score", 0)),
+        key=lambda x: x.get("gap_score", 0),
         reverse=True,
     )
 

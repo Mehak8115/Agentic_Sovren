@@ -68,7 +68,8 @@ class BookingAgent:
 
         if req.get("location") or req.get("route_from") or req.get("route_to"):
             f = tool_location_route_matching(boats, req.get("location"), req.get("route_from"), req.get("route_to"))
-            boats = f if f else boats
+            # If location was specified but NO boats match — do NOT fall back to all boats
+            boats = f
             self.memory.append(f"[OBS] {len(boats)} after location filter")
 
         if req.get("passengers"):
@@ -116,17 +117,32 @@ class BookingAgent:
                 return out
 
         if not boats:
-            loc = req.get("location") or "any"
-            bgt = f"up to Rs{req.get('budget_max')}" if req.get("budget_max") else "any budget"
-            nl, qs = self._call_llm(
-                f"No boats found: location={loc}, {bgt}.\n"
-                "Write 2 sentences: no boats found + suggest adjusting filters.\n"
-                "Do NOT invent boat names.\n\n---QUESTIONS---\n"
-                '["Try different location?","Increase budget?","Different month?","Fewer passengers?","Different boat type?"]'
-            )
-            return {"agent":"Maritime Booking Agent","intent":intent,"error":f"No boats for {loc}.",
-                    "response":nl,"suggested_questions":qs,
-                    "data":{"total_boats_found":0,"top_recommendations":[],"booking":None}}
+            loc = req.get("location") or "your location"
+            COVERED_LOCATIONS = [
+                "Mumbai", "Goa", "Kochi", "Alleppey", "Chennai",
+                "Kolkata", "Visakhapatnam", "Mangalore", "Port Blair", "Lakshadweep"
+            ]
+            if req.get("location"):
+                response = (
+                    f"Unfortunately, our services do not cover **{loc}** at the moment.\n\n"
+                    f"We currently operate in:\n"
+                    + "  ".join(f"**{l}**" for l in COVERED_LOCATIONS)
+                    + "\n\nWould you like me to show boats in any of these locations?"
+                )
+                qs = [f"Show boats in {l}" for l in COVERED_LOCATIONS[:5]]
+            else:
+                response = "No boats found matching your filters. Try adjusting your budget, travel date, or passenger count."
+                qs = ["Try different location?", "Increase budget?", "Different month?", "Fewer passengers?", "Different boat type?"]
+
+            return {
+                "agent": "Maritime Booking Agent",
+                "intent": intent,
+                "user_name": user["name"],
+                "query": query,
+                "response": response,
+                "suggested_questions": qs,
+                "data": {"total_boats_found": 0, "top_recommendations": [], "booking": None}
+            }
 
         # Detect if user wants worst/lowest rated boats
         sort_asc = any(w in query.lower() for w in [
@@ -228,7 +244,7 @@ Reply with ONLY: yes or no"""}],
             f"User {user['name']} asked: \"{query}\"\n\n"
             f"REAL boats from our database (use ONLY this data — do NOT invent anything):\n{boats_block}\n"
             f"{conf_block}\n"
-            f"{'IMPORTANT: Booking NOT confirmed. Do NOT mention booking IDs.' if not booking_conf else ''}\n\n"
+            f"{'IMPORTANT: Booking NOT confirmed. Do NOT write BOOKING CONFIRMED or any booking ID. Do NOT mention transaction IDs.' if not booking_conf else ''}\n\n"
             f"Instructions:\n"
             f"- Greet {user['name']} by name (not 'Guest')\n"
             f"- Answer the user's SPECIFIC question using only the boat data above\n"
@@ -291,6 +307,13 @@ Reply with ONLY: yes or no"""}],
         else:
             nl = raw
             qr = "[]"
+
+        # Strip any leaked booking confirmation block from the NL response
+        nl = re.sub(
+            r'BOOKING CONFIRMED:.*?(?=\n\n|\Z)',
+            '', nl, flags=re.DOTALL | re.IGNORECASE
+        ).strip()
+
         qs = []
         m = re.search(r"\[.*?\]", qr, re.DOTALL)
         if m:

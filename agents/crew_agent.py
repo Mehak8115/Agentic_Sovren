@@ -168,34 +168,46 @@ class CrewAgent:
             )
             context_block = f"Candidate: {name}\nJobs: {total_jobs} total, {eligible_jobs} eligible\n\nTop 5:\n{items}"
 
-        prompt = f"""You are a helpful maritime career assistant.
+        prompt = f"""You are a warm, knowledgeable maritime career advisor talking directly to {name}.
 User asked: "{query}"
-Intent: {intent}
 
-Candidate: **{name}**
-Jobs analysed: {total_jobs} | Eligible: **{eligible_jobs}**
+Candidate: {name} | Jobs checked: {total_jobs} | Eligible for: {eligible_jobs}
 
 Data:
 {context_block}
 
-IMPORTANT FORMATTING RULES:
-- Write in plain, friendly English — NO raw data like "eligible=True" or "score=80.0/100"
-- Say "excellent match" not "score=80"
-- Say "you are eligible" not "eligible=True"
-- Say "you match 100% of required skills" not "skill_match=100.0%"
-- Use **bold** for job titles, skills, certifications
-- Use ## for section headers
-- Use bullet points (- item) for lists
-- Use ₹ for all salary mentions
+TONE & STYLE:
+- Talk to {name} directly — conversational, encouraging, professional
+- Never show raw data like "score=80", "eligible=True", "skill_match=100.0%"
+- Use natural language: "great match", "you qualify", "you match all required skills"
+- **Bold** job titles, skill names, certifications
+- ## for section headers, bullet points for lists
+- ₹ for all salaries
 
-Write a well-formatted maritime career response:
-1. Brief **summary** of the candidate's situation
-2. ## Top Job Matches — for each job: name, whether eligible, how good the match is, what's missing (in plain English)
-3. ## Skills to Develop — what to learn and why
-4. ## Recommendation — clear actionable advice
+Write the response in this structure:
+## Summary
+2-3 sentences about {name}'s situation — what you found, how many roles fit.
 
-Then write ---QUESTIONS--- on its own line, and below it EXACTLY 5 maritime career follow-up questions as JSON array.
-Questions should be specific to the candidate's actual results — certifications, training, salary, career path."""
+## Top Job Matches
+For each role: job title (bold), eligibility in plain words, match quality, what's missing if anything.
+
+## Skills to Develop
+Only if there are gaps — what to learn, why it matters. Skip this section if no gaps.
+
+## Recommendation
+One clear, actionable next step for {name}.
+
+Then on its own line write exactly:
+---QUESTIONS---
+Then a JSON array of exactly 5 follow-up questions as plain strings (NOT objects).
+Questions must be SPECIFIC to {name}'s actual situation — based on their real gaps, roles, and scores.
+Examples of good questions (personalise with actual role/skill names):
+- "What certifications do I need to qualify for [specific role]?"
+- "How can I improve my score for [specific role]?"
+- "What skills am I missing for [specific role]?"
+- "Which role is the best fit for me right now?"
+- "What is the salary range for [specific role]?"
+["question 1?", "question 2?", "question 3?", "question 4?", "question 5?"]"""
 
         raw = groq_chat(
             messages=[{"role": "user", "content": prompt}],
@@ -207,8 +219,18 @@ Questions should be specific to the candidate's actual results — certification
             nl    = parts[0].strip()
             q_raw = parts[1].strip()
         else:
-            nl    = raw
-            q_raw = "[]"
+            # Try splitting on QUESTIONS---- or similar variants
+            q_split = re.split(r'-{3,}QUESTIONS-{3,}|QUESTIONS:', raw, flags=re.IGNORECASE)
+            if len(q_split) > 1:
+                nl    = q_split[0].strip()
+                q_raw = q_split[1].strip()
+            else:
+                nl    = raw
+                q_raw = "[]"
+
+        # Strip any trailing JSON array that leaked into nl
+        nl = re.sub(r'\[\s*[\{\"].*\]\s*$', '', nl, flags=re.DOTALL).strip()
+        nl = re.sub(r'^[-—]{3,}\s*$', '', nl, flags=re.MULTILINE).strip()
 
         questions = []
         # Use greedy match to capture full JSON array
@@ -216,17 +238,24 @@ Questions should be specific to the candidate's actual results — certification
         if m:
             try:
                 parsed = json.loads(m.group(0))
-                questions = [q for q in parsed if isinstance(q, str)]
+                for q in parsed:
+                    if isinstance(q, str):
+                        questions.append(q)
+                    elif isinstance(q, dict):
+                        # Handle {"question": "..."} or {"text": "..."} format
+                        val = q.get("question") or q.get("text") or q.get("q") or ""
+                        if val:
+                            questions.append(str(val))
             except Exception:
                 pass
         # Fallback if no questions parsed
         if not questions:
             questions = [
-                f"What certifications do I need for the top matching roles?",
-                f"How can I improve my skill match percentage?",
-                f"What is the salary range for these positions?",
-                f"What training courses would help me qualify for captain roles?",
-                f"How long does it take to progress to senior maritime positions?",
+                "What certifications do I need for the top matching roles?",
+                "How can I improve my skill match percentage?",
+                "What is the salary range for these positions?",
+                "What training courses would help me qualify for captain roles?",
+                "How long does it take to progress to senior maritime positions?",
             ]
         return nl, questions[:5]
 

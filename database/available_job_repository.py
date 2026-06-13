@@ -6,5 +6,7 @@ from database.mongodb import (
 
 def get_all_available_jobs():
     return list(
-        available_jobs_collection.find({})
+        available_jobs_collection.find(
+            {"status": {"$nin": ["closed"]}}   # include None/missing + published + draft, exclude only closed
+        )
     )
